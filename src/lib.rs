@@ -10,7 +10,7 @@ use crate::actions::ActionsPlugin;
 use crate::audio::InternalAudioPlugin;
 use crate::loading::LoadingPlugin;
 use crate::menu::MenuPlugin;
-use crate::player::PlayerPlugin;
+use crate::player::PlayGamePlugin;
 
 use bevy::app::App;
 #[cfg(debug_assertions)]
@@ -40,7 +40,7 @@ impl Plugin for GamePlugin {
             MenuPlugin,
             ActionsPlugin,
             InternalAudioPlugin,
-            PlayerPlugin,
+            PlayGamePlugin,
         ));
 
         #[cfg(debug_assertions)]

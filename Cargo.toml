@@ -82,6 +82,7 @@ log = { version = "0.4", features = [
     "max_level_debug",
     "release_max_level_warn",
 ] }
+avian3d = { git = "https://github.com/Jondolf/avian", branch = "main" }
 
 [build-dependencies]
 embed-resource = "1"
