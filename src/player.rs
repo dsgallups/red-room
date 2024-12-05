@@ -1,24 +1,27 @@
-use std::f32::consts::{self, FRAC_PI_2};
-
-use crate::actions::Actions;
 use crate::dynamic_character_plugin::CharacterControllerBundle;
-use crate::loading::TextureAssets;
 use crate::GameState;
 use avian3d::math::Scalar;
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
-pub struct PlayGamePlugin;
+#[derive(Resource, Default)]
+struct CameraFocus {
+    //looking at at this point in time. should always look towards the player
+    currently_looking_at: Vec3,
+}
 
 #[derive(Component)]
 pub struct Player;
+
+pub struct PlayGamePlugin;
 
 /// This plugin handles player related stuff like movement
 /// Player logic is only active during the State `GameState::Playing`
 impl Plugin for PlayGamePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Playing), (spawn_player, make_scene))
-            .add_systems(Update, move_player.run_if(in_state(GameState::Playing)));
+        app.add_systems(OnEnter(GameState::Playing), make_scene)
+            .init_resource::<CameraFocus>()
+            .add_systems(Update, focus_camera.run_if(in_state(GameState::Playing)));
     }
 }
 
@@ -27,7 +30,7 @@ fn make_scene(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // Static physics object with a collision shape
+    //floor
     commands.spawn((
         RigidBody::Static,
         ColliderConstructor::TrimeshFromMesh,
@@ -35,27 +38,27 @@ fn make_scene(
         Mesh3d(meshes.add(Plane3d::default().mesh().size(20., 20.))),
     ));
 
-    //back wall
-    let quat_back = Quat::from_xyzw(-0.5, 0.5, 0.5, 0.5);
+    //right wall
+    let quat_right = Quat::from_xyzw(-0.5, 0.5, 0.5, 0.5);
     commands.spawn((
         RigidBody::Static,
         ColliderConstructor::TrimeshFromMesh,
         MeshMaterial3d(materials.add(Color::WHITE)),
         Mesh3d(meshes.add(Plane3d::default().mesh().size(20., 10.))),
-        Transform::from_rotation(quat_back).with_translation(Vec3::new(10., 5., 0.)),
-    ));
-
-    //front wall
-    let quat_front = Quat::from_xyzw(0.5, 0.5, 0.5, -0.5);
-    commands.spawn((
-        RigidBody::Static,
-        ColliderConstructor::TrimeshFromMesh,
-        MeshMaterial3d(materials.add(Color::WHITE)),
-        Mesh3d(meshes.add(Plane3d::default().mesh().size(20., 10.))),
-        Transform::from_rotation(quat_front).with_translation(Vec3::new(-10., 5., 0.)),
+        Transform::from_rotation(quat_right).with_translation(Vec3::new(10., 5., 0.)),
     ));
 
     //left wall
+    let quad_left = Quat::from_xyzw(0.5, 0.5, 0.5, -0.5);
+    commands.spawn((
+        RigidBody::Static,
+        ColliderConstructor::TrimeshFromMesh,
+        MeshMaterial3d(materials.add(Color::linear_rgb(1., 1., 0.))),
+        Mesh3d(meshes.add(Plane3d::default().mesh().size(20., 10.))),
+        Transform::from_rotation(quad_left).with_translation(Vec3::new(-10., 5., 0.)),
+    ));
+
+    //back wall
     commands.spawn((
         RigidBody::Static,
         ColliderConstructor::TrimeshFromMesh,
@@ -65,7 +68,7 @@ fn make_scene(
             .with_translation(Vec3::new(0., 5., -10.)),
     ));
 
-    //right wall
+    //front wall
     commands.spawn((
         RigidBody::Static,
         ColliderConstructor::TrimeshFromMesh,
@@ -89,9 +92,10 @@ fn make_scene(
         Friction::ZERO.with_combine_rule(CoefficientCombine::Min),
         Restitution::ZERO.with_combine_rule(CoefficientCombine::Min),
         GravityScale(2.0),
+        Player,
     ));
 
-    // Dynamic physics object with a collision shape and initial angular velocity
+    // Cube
     commands.spawn((
         RigidBody::Dynamic,
         Collider::cuboid(1.0, 1.0, 1.0),
@@ -99,6 +103,16 @@ fn make_scene(
         Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
         MeshMaterial3d(materials.add(Color::srgb_u8(124, 144, 255))),
         Transform::from_xyz(0.0, 4.0, 0.0),
+    ));
+
+    // Sphere
+    commands.spawn((
+        RigidBody::Dynamic,
+        Collider::sphere(0.5),
+        AngularVelocity(Vec3::new(2.2, 3.5, 1.5)),
+        Mesh3d(meshes.add(Sphere::new(0.5))),
+        MeshMaterial3d(materials.add(Color::srgb_u8(124, 144, 255))),
+        Transform::from_xyz(3.0, 4.0, 0.0),
     ));
 
     // Light
@@ -117,33 +131,25 @@ fn make_scene(
     // Camera
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(40., 13., 7.0).looking_at(Vec3::ZERO, Dir3::Y),
+        Transform::from_xyz(0., 15., 25.0).looking_at(Vec3::ZERO, Dir3::Y),
     ));
 }
 
-fn spawn_player(mut commands: Commands, textures: Res<TextureAssets>) {
-    commands.spawn((
-        Sprite::from_image(textures.bevy.clone()),
-        Transform::from_translation(Vec3::new(0., 0., 1.)),
-        Player,
-    ));
-}
-
-fn move_player(
+fn focus_camera(
     time: Res<Time>,
-    actions: Res<Actions>,
-    mut player_query: Query<&mut Transform, With<Player>>,
+    player: Query<&Transform, (With<Player>, Without<Camera3d>)>,
+    mut camera: Query<&mut Transform, With<Camera3d>>,
 ) {
-    if actions.player_movement.is_none() {
-        return;
+    const SPEED: f32 = 2.0;
+    let player_t = player.get_single().unwrap().translation;
+
+    let mut camera_transform = camera.get_single_mut().unwrap();
+    let mut camera_looking_at = camera_transform.translation;
+    let mut camera_motion = player_t - camera_looking_at;
+    if camera_motion.length() > 0.4 {
+        camera_motion *= SPEED * time.delta_secs();
+        camera_looking_at += camera_motion;
     }
-    let speed = 150.;
-    let movement = Vec3::new(
-        actions.player_movement.unwrap().x * speed * time.delta_secs(),
-        actions.player_movement.unwrap().y * speed * time.delta_secs(),
-        0.,
-    );
-    for mut player_transform in &mut player_query {
-        player_transform.translation += movement;
-    }
+    // look at that new camera's actual focus
+    *camera_transform = camera_transform.looking_at(camera_looking_at, Vec3::Y);
 }
