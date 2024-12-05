@@ -1,3 +1,5 @@
+use std::f32::consts::{self, FRAC_PI_2};
+
 use crate::actions::Actions;
 use crate::loading::TextureAssets;
 use crate::GameState;
@@ -26,9 +28,60 @@ fn make_scene(
     // Static physics object with a collision shape
     commands.spawn((
         RigidBody::Static,
-        Collider::cylinder(4.0, 0.1),
+        ColliderConstructor::TrimeshFromMesh,
         MeshMaterial3d(materials.add(Color::WHITE)),
-        Mesh3d(meshes.add(Cylinder::new(4.0, 0.1))),
+        Mesh3d(meshes.add(Plane3d::default().mesh().size(20., 20.))),
+    ));
+
+    //back wall
+    // commands.spawn((
+    //     RigidBody::Static,
+    //     ColliderConstructor::TrimeshFromMesh,
+    //     MeshMaterial3d(materials.add(Color::WHITE)),
+    //     Mesh3d(meshes.add(Plane3d::default().mesh().size(20., 10.))),
+    //     Transform::from_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2 * 0.8))
+    //         .with_translation(Vec3::new(10., 5., 0.)),
+    // ));
+    //
+
+    //back wall
+    let quat_back = Quat::from_xyzw(-0.5, 0.5, 0.5, 0.5);
+    commands.spawn((
+        RigidBody::Static,
+        ColliderConstructor::TrimeshFromMesh,
+        MeshMaterial3d(materials.add(Color::WHITE)),
+        Mesh3d(meshes.add(Plane3d::default().mesh().size(20., 10.))),
+        Transform::from_rotation(quat_back).with_translation(Vec3::new(10., 5., 0.)),
+    ));
+
+    //front wall
+    let quat_front = Quat::from_xyzw(0.5, 0.5, 0.5, -0.5);
+    commands.spawn((
+        RigidBody::Static,
+        ColliderConstructor::TrimeshFromMesh,
+        MeshMaterial3d(materials.add(Color::WHITE)),
+        Mesh3d(meshes.add(Plane3d::default().mesh().size(20., 10.))),
+        Transform::from_rotation(quat_front).with_translation(Vec3::new(-10., 5., 0.)),
+    ));
+
+    //left wall
+    commands.spawn((
+        RigidBody::Static,
+        ColliderConstructor::TrimeshFromMesh,
+        MeshMaterial3d(materials.add(Color::linear_rgb(0., 1., 1.))),
+        Mesh3d(meshes.add(Plane3d::default().mesh().size(20., 10.))),
+        Transform::from_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2))
+            .with_translation(Vec3::new(0., 5., -10.)),
+    ));
+
+    //right wall
+    commands.spawn((
+        RigidBody::Static,
+        ColliderConstructor::TrimeshFromMesh,
+        MeshMaterial3d(materials.add(Color::linear_rgb(0., 1., 0.))),
+        Mesh3d(meshes.add(Plane3d::default().mesh().size(20., 10.))),
+        Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
+            .with_translation(Vec3::new(0., 5., 10.)),
     ));
 
     // Dynamic physics object with a collision shape and initial angular velocity
@@ -42,18 +95,22 @@ fn make_scene(
     ));
 
     // Light
-    commands.spawn((
-        PointLight {
-            shadows_enabled: true,
-            ..default()
-        },
-        Transform::from_xyz(4.0, 8.0, 4.0),
-    ));
+    for z in [-7.0, 7.0] {
+        commands.spawn((
+            PointLight {
+                color: Color::linear_rgb(1., 0., 0.),
+                range: 80.,
+                shadows_enabled: true,
+                ..default()
+            },
+            Transform::from_xyz(4., 8.0, z),
+        ));
+    }
 
     // Camera
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(-2.5, 4.5, 9.0).looking_at(Vec3::ZERO, Dir3::Y),
+        Transform::from_xyz(40., 13., 7.0).looking_at(Vec3::ZERO, Dir3::Y),
     ));
 }
 
