@@ -1,8 +1,10 @@
 use std::f32::consts::{self, FRAC_PI_2};
 
 use crate::actions::Actions;
+use crate::dynamic_character_plugin::CharacterControllerBundle;
 use crate::loading::TextureAssets;
 use crate::GameState;
+use avian3d::math::Scalar;
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
@@ -32,17 +34,6 @@ fn make_scene(
         MeshMaterial3d(materials.add(Color::WHITE)),
         Mesh3d(meshes.add(Plane3d::default().mesh().size(20., 20.))),
     ));
-
-    //back wall
-    // commands.spawn((
-    //     RigidBody::Static,
-    //     ColliderConstructor::TrimeshFromMesh,
-    //     MeshMaterial3d(materials.add(Color::WHITE)),
-    //     Mesh3d(meshes.add(Plane3d::default().mesh().size(20., 10.))),
-    //     Transform::from_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2 * 0.8))
-    //         .with_translation(Vec3::new(10., 5., 0.)),
-    // ));
-    //
 
     //back wall
     let quat_back = Quat::from_xyzw(-0.5, 0.5, 0.5, 0.5);
@@ -82,6 +73,22 @@ fn make_scene(
         Mesh3d(meshes.add(Plane3d::default().mesh().size(20., 10.))),
         Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
             .with_translation(Vec3::new(0., 5., 10.)),
+    ));
+
+    // Player
+    commands.spawn((
+        Mesh3d(meshes.add(Capsule3d::new(0.4, 1.0))),
+        MeshMaterial3d(materials.add(Color::srgb(0.8, 0.7, 0.6))),
+        Transform::from_xyz(0.0, 1.5, 0.0),
+        CharacterControllerBundle::new(Collider::capsule(0.4, 1.0)).with_movement(
+            30.0,
+            0.92,
+            7.0,
+            (30.0 as Scalar).to_radians(),
+        ),
+        Friction::ZERO.with_combine_rule(CoefficientCombine::Min),
+        Restitution::ZERO.with_combine_rule(CoefficientCombine::Min),
+        GravityScale(2.0),
     ));
 
     // Dynamic physics object with a collision shape and initial angular velocity

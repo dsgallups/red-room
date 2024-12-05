@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy::winit::WinitWindows;
 use bevy::DefaultPlugins;
-use red_room::GamePlugin;
+use red_room::{CharacterControllerPlugin, GamePlugin};
 use std::io::Cursor;
 use winit::window::Icon;
 
@@ -33,6 +33,7 @@ fn main() {
                     ..default()
                 }),
             PhysicsPlugins::default(),
+            CharacterControllerPlugin,
         ))
         .add_plugins(GamePlugin)
         .add_systems(Startup, set_window_icon)

@@ -2,6 +2,8 @@
 
 mod actions;
 mod audio;
+mod dynamic_character_plugin;
+pub use dynamic_character_plugin::CharacterControllerPlugin;
 mod loading;
 mod menu;
 mod player;
