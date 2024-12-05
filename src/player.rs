@@ -4,12 +4,6 @@ use avian3d::math::Scalar;
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
-#[derive(Resource, Default)]
-struct CameraFocus {
-    //looking at at this point in time. should always look towards the player
-    currently_looking_at: Vec3,
-}
-
 #[derive(Component)]
 pub struct Player;
 
@@ -20,7 +14,6 @@ pub struct PlayGamePlugin;
 impl Plugin for PlayGamePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Playing), make_scene)
-            .init_resource::<CameraFocus>()
             .add_systems(Update, focus_camera.run_if(in_state(GameState::Playing)));
     }
 }
